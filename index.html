@@ -728,9 +728,9 @@ const FERIADOS = new Set([
 // STATE
 // ─────────────────────────────────────────────────────
 const st = {
-  tfc: { saldoBancos:null, descubiertos:null, xlsmDate:null, chequesEmitidos:[], cartera:0, nChq:0, provRaw:[], chequesFisicos:[], compromisos:[],
+  tfc: { saldoBancos:null, descubiertos:null, xlsmDate:null, chequesEmitidos:[], cartera:0, nChq:0, carteraChqs:[], provRaw:[], chequesFisicos:[], compromisos:[],
          modoB: { pesos:null, dolares:null, cheques:null, provRaw:[] } },
-  tf:  { saldoBancos:null, descubiertos:null, xlsmDate:null, chequesEmitidos:[], cartera:0, nChq:0, provRaw:[], chequesFisicos:[], compromisos:[],
+  tf:  { saldoBancos:null, descubiertos:null, xlsmDate:null, chequesEmitidos:[], cartera:0, nChq:0, carteraChqs:[], provRaw:[], chequesFisicos:[], compromisos:[],
          modoB: { pesos:null, dolares:null, cheques:null, provRaw:[] } }
 };
 // Pestaña de cheques físicos por empresa (solo TFC por ahora)
@@ -1056,9 +1056,17 @@ function loadCarteraFromStorage(){
     try{
       const raw=localStorage.getItem(`${co}_cheques_v2`);
       const ds=localStorage.getItem(`${co}_cheques_date_v2`)||'';
-      if(raw){const d=JSON.parse(raw);st[co].cartera=d.reduce((s,c)=>s+(c.importe||0),0);st[co].nChq=d.length;setUploadSt(`ust-chq-${co}`,`uz-chq-${co}`,'ok',`✓ ${d.length} chq · ${ds}`);}
-      else{st[co].cartera=0;st[co].nChq=0;setUploadSt(`ust-chq-${co}`,`uz-chq-${co}`,'','Sin datos');}
-    }catch(e){st[co].cartera=0;st[co].nChq=0;}
+      if(raw){
+        const d=JSON.parse(raw);
+        st[co].carteraChqs=d;
+        st[co].cartera=d.reduce((s,c)=>s+(c.importe||0),0);
+        st[co].nChq=d.length;
+        setUploadSt(`ust-chq-${co}`,`uz-chq-${co}`,'ok',`✓ ${d.length} chq · ${ds}`);
+      }else{
+        st[co].carteraChqs=[];st[co].cartera=0;st[co].nChq=0;
+        setUploadSt(`ust-chq-${co}`,`uz-chq-${co}`,'','Sin datos');
+      }
+    }catch(e){st[co].carteraChqs=[];st[co].cartera=0;st[co].nChq=0;}
   }
 }
 function onChqUpload(event,co){
@@ -1084,7 +1092,7 @@ function onChqUpload(event,co){
       // Filtrar: importe positivo + debe tener número de cheque (las filas de totales/subtotales no lo tienen)
       .filter(c=>c.importe>0&&!isNaN(c.importe)&&c.numero!=='');
       console.log('[CHQ] Cheques válidos (con número):', parsed.length, parsed.slice(0,3));
-      st[co].cartera=parsed.reduce((s,c)=>s+c.importe,0);st[co].nChq=parsed.length;
+      st[co].carteraChqs=parsed;st[co].cartera=parsed.reduce((s,c)=>s+c.importe,0);st[co].nChq=parsed.length;
       const ds=new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
       localStorage.setItem(`${co}_cheques_v2`,JSON.stringify(parsed));localStorage.setItem(`${co}_cheques_date_v2`,ds);
       setUploadSt(`ust-chq-${co}`,`uz-chq-${co}`,'ok',`✓ ${parsed.length} chq · ${ds}`);renderAll();
@@ -1617,24 +1625,38 @@ function buildCF(co, days){
   const cutoff=new Date(today);cutoff.setDate(cutoff.getDate()-30);
   const nbd=nextBizDay(today);
   const nbdKey=dKey(nbd);
-  let saldo=(st[co].saldoBancos??0)+(st[co].cartera??0);
+  // Saldo inicial: solo saldo bancos. La cartera entra como INGRESOS por fecha.
+  let saldo=(st[co].saldoBancos??0);
   const provItems=getProv(co);
   const provMan=getManuales(co,'prov');
   const cobMan=getManuales(co,'cob');
+
+  // Cartera activa (no adjudicada): se acredita completa en HOY (día 1)
+  let cartIngHoy=0;
+  for(const c of (st[co].carteraChqs||[])){
+    const id=chqStableId(co,'e',c.numero,c.importe||0);
+    if(!excl[co].chq.has(id))cartIngHoy+=(c.importe||0);
+  }
+  for(const c of (st[co].chequesFisicos||[])){
+    const id=chqStableId(co,'f',c.numero,c.importe||0);
+    if(!excl[co].chq.has(id))cartIngHoy+=(c.importe||0);
+  }
+
   const rows=[];
   for(let i=0;i<days;i++){
     const d=new Date(today);d.setDate(d.getDate()+i);
     const key=dKey(d);
     let egChq=0,egProv=0,ing=0;
     if(i===0){
-      // Hoy: los cheques ya fueron debitados en el sistema → no van aquí
+      // Cartera: se acredita hoy
+      ing+=cartIngHoy;
+      // Hoy: los cheques emitidos ya fueron debitados en el sistema → no van aquí
       for(const p of provItems)if(p.fecha<=today)egProv+=p.monto;
       for(const m of provMan)if(m.date<=today)egProv+=m.importe;
       for(const m of cobMan)if(m.date<=today)ing+=m.importe;
     }else{
       for(const c of st[co].chequesEmitidos){
         if(key===nbdKey){
-          // Próximo día hábil: acumula vencidos (debitDate ≤ hoy, hasta 30 días atrás) + los propios del día
           if((c.debitDate<=today&&c.paymentDate>=cutoff)||dKey(c.debitDate)===key)egChq+=c.importe;
         }else{
           if(dKey(c.debitDate)===key)egChq+=c.importe;
