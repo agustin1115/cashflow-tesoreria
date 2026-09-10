@@ -163,8 +163,10 @@
       <div class="kpi"><div class="kpi-label">Acuerdos descubierto</div><div class="kpi-value" id="kpi-tfc-desc">—</div></div>
       <div class="kpi" style="background:var(--tfc-light)"><div class="kpi-label" style="color:var(--tfc-primary);font-weight:700">Disponible para operar</div><div class="kpi-value" id="kpi-tfc-disp">—</div><div class="kpi-sub" id="kpi-tfc-disp-sub"></div></div>
     </div>
-    <div class="kpi-row" style="border-top:1px solid #f0f0f0">
+    <div class="kpi-row" style="border-top:1px solid #f0f0f0;grid-template-columns:repeat(5,1fr)">
       <div class="kpi"><div class="kpi-label">Cartera cheques</div><div class="kpi-value pos" id="kpi-tfc-cartera">—</div><div class="kpi-sub" id="kpi-tfc-nchq">—</div></div>
+      <div class="kpi"><div class="kpi-label">Saldo BAVSA</div><div class="kpi-value" id="kpi-tfc-bavsa">—</div></div>
+      <div class="kpi" style="background:var(--tfc-light)"><div class="kpi-label" style="color:var(--tfc-primary);font-weight:700">Fondos disponibles</div><div class="kpi-value pos" id="kpi-tfc-cartera-total">—</div><div class="kpi-sub" style="color:var(--tfc-primary);opacity:.7">Cartera + BAVSA</div></div>
       <div class="kpi"><div class="kpi-label">Chq emitidos (total)</div><div class="kpi-value neg" id="kpi-tfc-emitidos">—</div><div class="kpi-sub" id="kpi-tfc-nemitidos">—</div></div>
       <div class="kpi"><div class="kpi-label">Cuentas a pagar</div><div class="kpi-value neg" id="kpi-tfc-cpagar">—</div><div class="kpi-sub" id="kpi-tfc-ncpagar">—</div></div>
     </div>
@@ -257,6 +259,12 @@
     <div class="mb-kpi"><div class="mb-kpi-label">Cheques Modo B</div><div class="mb-kpi-value pos" id="mb-kpi-tfc-cheques">—</div></div>
     <div class="mb-kpi"><div class="mb-kpi-label">Total disponible ($ + chq)</div><div class="mb-kpi-value pos" id="mb-kpi-tfc-total">—</div></div>
   </div>
+  <div class="mb-kpi-row" style="border-top:1px solid #253040">
+    <div class="mb-kpi"><div class="mb-kpi-label">⚠ Vencido</div><div class="mb-kpi-value" id="mb-kpi-tfc-vencido">—</div></div>
+    <div class="mb-kpi"><div class="mb-kpi-label">Próx. 7 días</div><div class="mb-kpi-value" id="mb-kpi-tfc-d7">—</div></div>
+    <div class="mb-kpi"><div class="mb-kpi-label">Próx. 15 días</div><div class="mb-kpi-value" id="mb-kpi-tfc-d15">—</div></div>
+    <div class="mb-kpi"><div class="mb-kpi-label">Más de 15 días</div><div class="mb-kpi-value" id="mb-kpi-tfc-d15plus">—</div></div>
+  </div>
   <div class="mb-sub-header">
     <span class="mb-sub-title">📋 Compromisos de Pago</span>
     <span style="font-size:10px;color:#aaa">· Proveedor | Fecha | Importe</span>
@@ -313,6 +321,12 @@
       <div class="mb-kpi"><div class="mb-kpi-label">Dólares en caja</div><div class="mb-kpi-value pos" id="mb-kpi-tf-dolares">—</div></div>
       <div class="mb-kpi"><div class="mb-kpi-label">Cheques Modo B</div><div class="mb-kpi-value pos" id="mb-kpi-tf-cheques">—</div></div>
       <div class="mb-kpi"><div class="mb-kpi-label">Total disponible ($ + chq)</div><div class="mb-kpi-value pos" id="mb-kpi-tf-total">—</div></div>
+    </div>
+    <div class="mb-kpi-row" style="border-top:1px solid #253040">
+      <div class="mb-kpi"><div class="mb-kpi-label">⚠ Vencido</div><div class="mb-kpi-value" id="mb-kpi-tf-vencido">—</div></div>
+      <div class="mb-kpi"><div class="mb-kpi-label">Próx. 7 días</div><div class="mb-kpi-value" id="mb-kpi-tf-d7">—</div></div>
+      <div class="mb-kpi"><div class="mb-kpi-label">Próx. 15 días</div><div class="mb-kpi-value" id="mb-kpi-tf-d15">—</div></div>
+      <div class="mb-kpi"><div class="mb-kpi-label">Más de 15 días</div><div class="mb-kpi-value" id="mb-kpi-tf-d15plus">—</div></div>
     </div>
     <div class="mb-sub-header">
       <span class="mb-sub-title">📋 Compromisos de Pago</span>

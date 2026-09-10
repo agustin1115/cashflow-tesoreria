@@ -26,9 +26,9 @@ const FERIADOS = new Set([
 // STATE
 // ─────────────────────────────────────────────────────
 const st = {
-  tfc: { saldoBancos:null, descubiertos:null, xlsmDate:null, chequesEmitidos:[], cartera:0, nChq:0, carteraChqs:[], provRaw:[], chequesFisicos:[], compromisos:[],
+  tfc: { saldoBancos:null, descubiertos:null, xlsmDate:null, bancos:[], chequesEmitidos:[], cartera:0, nChq:0, carteraChqs:[], provRaw:[], chequesFisicos:[], compromisos:[],
          modoB: { pesos:null, dolares:null, cheques:null, provRaw:[] } },
-  tf:  { saldoBancos:null, descubiertos:null, xlsmDate:null, chequesEmitidos:[], cartera:0, nChq:0, carteraChqs:[], provRaw:[], chequesFisicos:[], compromisos:[],
+  tf:  { saldoBancos:null, descubiertos:null, xlsmDate:null, bancos:[], chequesEmitidos:[], cartera:0, nChq:0, carteraChqs:[], provRaw:[], chequesFisicos:[], compromisos:[],
          modoB: { pesos:null, dolares:null, cheques:null, provRaw:[] } }
 };
 // Pestaña de cheques físicos por empresa (solo TFC por ahora)
@@ -277,17 +277,23 @@ function parseReporte(data, co) {
   let xlsmDate=gvizDate(cellA0.v);
   if(!xlsmDate&&cellA0.f){const p=String(cellA0.f).match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);if(p)xlsmDate=new Date(+p[3],+p[2]-1,+p[1]);}
   let saldoBancos=null, descubiertos=null;
+  const bancos=[];
   for(const row of rows){
     const cA=row[0]||{},cB=row[1]||{},cC=row[2]||{};
-    const isTotal=String(cA.v??'').trim().toUpperCase()==='TOTAL'||String(cA.f??'').trim().toUpperCase()==='TOTAL';
+    const nombre=String(cA.v??cA.f??'').trim();
+    const isTotal=nombre.toUpperCase()==='TOTAL';
     if(isTotal && typeof cB.v==='number'){
       saldoBancos=cB.v;
-      // Col C = total acuerdos de descubierto (puede ser 0 o null)
       if(typeof cC.v==='number') descubiertos=cC.v;
       break;
     }
+    // Fila de banco individual: nombre no vacío + saldo numérico
+    if(nombre && typeof cB.v==='number'){
+      bancos.push({nombre, saldo:cB.v, acuerdo: typeof cC.v==='number'?cC.v:0});
+    }
   }
   if(saldoBancos==null) console.warn(`[Tesoreria ${co}] No se encontró TOTAL. Filas:`,rows.slice(0,8).map(r=>r.map(c=>`${c.v}|${c.f}`)));
+  st[co].bancos=bancos;
   st[co].saldoBancos=saldoBancos; st[co].descubiertos=descubiertos; st[co].xlsmDate=xlsmDate;
 }
 function parseChEmitidos(data, co) {
@@ -331,9 +337,14 @@ function onXLSMUpload(event,co){
       const rows1=XLSX.utils.sheet_to_json(ws1,{header:1,raw:true,cellDates:true});
       let xlsmDate=null,saldoBancos=null;
       if(rows1[0]&&rows1[0][0] instanceof Date)xlsmDate=rows1[0][0];
-      let desc1=null;
-      for(const row of rows1)if(row&&String(row[0]).trim().toUpperCase()==='TOTAL'&&typeof row[1]==='number'){saldoBancos=row[1];if(typeof row[2]==='number')desc1=row[2];break;}
-      st[co].descubiertos=desc1;
+      let desc1=null;const bancos1=[];
+      for(const row of rows1){
+        if(!row)continue;
+        const nombre=String(row[0]??'').trim();
+        if(nombre.toUpperCase()==='TOTAL'&&typeof row[1]==='number'){saldoBancos=row[1];if(typeof row[2]==='number')desc1=row[2];break;}
+        if(nombre&&typeof row[1]==='number')bancos1.push({nombre,saldo:row[1],acuerdo:typeof row[2]==='number'?row[2]:0});
+      }
+      st[co].bancos=bancos1;st[co].descubiertos=desc1;
       st[co].saldoBancos=saldoBancos;st[co].xlsmDate=xlsmDate;
       const ws2=wb.Sheets['Ch. Emitidos'];
       if(ws2){const rows2=XLSX.utils.sheet_to_json(ws2,{header:1,raw:true,cellDates:true});const ch=[];
@@ -623,6 +634,27 @@ function renderModoB(co) {
 
   // Tabla de compromisos
   const prov = mb.provRaw || [];
+
+  // Buckets por vencimiento (aunque no haya prov, resetear)
+  const setMbBucket = (id, val) => {
+    const el = document.getElementById(id); if(!el) return;
+    if(val > 0){ el.textContent = fN(val); el.className = 'mb-kpi-value neg'; }
+    else { el.textContent = '—'; el.className = 'mb-kpi-value'; }
+  };
+  let vencido=0, d7=0, d15=0, d15plus=0;
+  for(const r of prov){
+    const dias = r.fecha ? Math.round((r.fecha - today) / (1000*86400)) : null;
+    if(dias === null) continue;
+    if(dias < 0)       vencido  += r.monto;
+    else if(dias <= 7) d7       += r.monto;
+    else if(dias <= 15) d15     += r.monto;
+    else               d15plus  += r.monto;
+  }
+  setMbBucket(`mb-kpi-${co}-vencido`,  vencido);
+  setMbBucket(`mb-kpi-${co}-d7`,       d7);
+  setMbBucket(`mb-kpi-${co}-d15`,      d15);
+  setMbBucket(`mb-kpi-${co}-d15plus`,  d15plus);
+
   if (!prov.length) {
     tbody.innerHTML = `<tr><td colspan="4" class="mb-empty">Subí el Excel de compromisos Modo B (Proveedor | Fecha | Importe)</td></tr>`;
     return;
@@ -655,9 +687,37 @@ function renderModoB(co) {
 //         cap $70M neto/día → se escalonan hacia días hábiles previos
 // ─────────────────────────────────────────────────────
 const _finExpanded = new Set(); // fechas expandidas en la vista CFO
+const _finPagados  = new Set(); // IDs de compromisos marcados como pagados
+let _showFinPagados = false;    // toggle para mostrar pagados
+
+function saveFinPagados(){ try{ localStorage.setItem('tfc_fin_pagados_v1', JSON.stringify([..._finPagados])); }catch(e){} }
+function loadFinPagados(){ try{ const r=localStorage.getItem('tfc_fin_pagados_v1'); if(r) JSON.parse(r).forEach(id=>_finPagados.add(id)); }catch(e){} }
+function toggleFinPagado(id){ if(_finPagados.has(id)) _finPagados.delete(id); else _finPagados.add(id); saveFinPagados(); renderFinanciera(); }
+function marcarDiaPagado(k){
+  const comp = (st.tfc.compromisos||[]).filter(c => dKey(c.fechaEntrega)===k);
+  const allPagados = comp.every(c => _finPagados.has(c.id));
+  comp.forEach(c => allPagados ? _finPagados.delete(c.id) : _finPagados.add(c.id));
+  saveFinPagados(); renderFinanciera();
+}
+function toggleShowFinPagados(){ _showFinPagados = !_showFinPagados; renderFinanciera(); }
 
 const FIN_RATE = 0.03;
 const FIN_CAP  = 70_000_000;
+
+// Bancos operativos TFC (para KPIs y CF): Galicia, Macro, CMF
+const TFC_OP_BANKS = [/galicia/i, /macro/i, /cmf/i];
+const TFC_BAVSA_RE = /bavsa/i;
+function tfcOpBancos(){
+  const bs = st.tfc.bancos || [];
+  const op = bs.filter(b => TFC_OP_BANKS.some(p => p.test(b.nombre)));
+  const bavsa = bs.find(b => TFC_BAVSA_RE.test(b.nombre)) || null;
+  if(!op.length) return { saldo: st.tfc.saldoBancos, desc: st.tfc.descubiertos, bavsa };
+  return {
+    saldo: op.reduce((s,b) => s + b.saldo, 0),
+    desc:  op.reduce((s,b) => s + b.acuerdo, 0),
+    bavsa
+  };
+}
 
 function loadCompromisosFromStorage() {
   try {
@@ -787,12 +847,16 @@ function renderFinanciera() {
   if (!tbodyCfo || !tbodyTes) return;
   const today = new Date(); today.setHours(0,0,0,0);
 
-  const plan = calcPlanFinanciera(compromisos);
-  const totalEfec  = compromisos.reduce((s,c) => s + c.importeEfectivo, 0);
+  // Separar activos y pagados
+  const activos  = compromisos.filter(c => !_finPagados.has(c.id));
+  const pagados  = compromisos.filter(c =>  _finPagados.has(c.id));
+
+  const plan = calcPlanFinanciera(activos);
+  const totalEfec  = activos.reduce((s,c) => s + c.importeEfectivo, 0);
   const totalBruto = plan.reduce((s,p) => s + p.bruto, 0);
   const totalCosto = plan.reduce((s,p) => s + p.costo, 0);
 
-  document.getElementById('finkpi-n').textContent     = compromisos.length || '—';
+  document.getElementById('finkpi-n').textContent     = activos.length || '—';
   document.getElementById('finkpi-efec').textContent  = totalEfec > 0  ? fN(totalEfec)  : '—';
   document.getElementById('finkpi-bruto').textContent = totalBruto > 0 ? fN(totalBruto) : '—';
   document.getElementById('finkpi-costo').textContent = totalCosto > 0 ? fN(totalCosto) : '—';
@@ -807,7 +871,7 @@ function renderFinanciera() {
   }
 
   // ── BLOQUE 1: Vista CFO — agrupado por fecha de entrega ──────
-  const compOrdenados = [...compromisos].sort((a,b) => a.fechaEntrega - b.fechaEntrega);
+  const compOrdenados = [...activos].sort((a,b) => a.fechaEntrega - b.fechaEntrega);
 
   // Agrupar por fecha de entrega
   const porFecha = {};
@@ -823,6 +887,7 @@ function renderFinanciera() {
     const grupo = porFecha[k];
     const dias = Math.round((grupo.fecha - today) / (1000*86400));
     const totalDia = grupo.items.reduce((s,c)=>s+c.importeEfectivo, 0);
+    const allPagadosEnDia = grupo.items.every(c => _finPagados.has(c.id));
     const expanded = _finExpanded.has(k);
     const estadoBadge = dias < 0
       ? `<span class="d-days overdue">Vencido ${Math.abs(dias)}d</span>`
@@ -833,10 +898,11 @@ function renderFinanciera() {
     const n = grupo.items.length;
     const dayLabel = `${dayNames[grupo.fecha.getDay()]} ${grupo.fecha.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})}`;
     const arrow = expanded ? '▼' : '▶';
+    const btnPagarDia = `<button onclick="event.stopPropagation();marcarDiaPagado('${k}')" style="font-size:9px;padding:2px 7px;border-radius:4px;border:1px solid #bbb;background:#f5f5f5;color:#555;cursor:pointer;margin-left:6px">${allPagadosEnDia?'↺ Desmarcar':'✓ Pagado'}</button>`;
 
     // Fila resumen del día (clickable)
     htmlCfo += `<tr class="${rowCls}" style="cursor:pointer;font-weight:700" onclick="toggleFinGroup('${k}')">
-      <td style="padding-left:10px"><span style="font-size:10px;color:var(--tfc-primary);margin-right:6px">${arrow}</span>${dayLabel}</td>
+      <td style="padding-left:10px"><span style="font-size:10px;color:var(--tfc-primary);margin-right:6px">${arrow}</span>${dayLabel}${btnPagarDia}</td>
       <td style="color:#aaa;font-size:10px;font-weight:400">${n} compromiso${n!==1?'s':''}</td>
       <td></td>
       <td class="r" style="font-size:14px;color:#c0392b">${fN(totalDia)}</td>
@@ -847,10 +913,11 @@ function renderFinanciera() {
     if (expanded) {
       for (const c of grupo.items) {
         const vtoStr = c.fechaVto ? c.fechaVto.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+        const btnPagar = `<button onclick="toggleFinPagado('${c.id}')" style="font-size:9px;padding:2px 7px;border-radius:4px;border:1px solid #bbb;background:#f5f5f5;color:#555;cursor:pointer">✓ Pagado</button>`;
         htmlCfo += `<tr style="background:#f8faf6">
           <td style="padding-left:32px;color:#555;font-size:11px">↳ ${c.cliente}</td>
           <td style="color:#aaa;font-size:10px">Vto. cheque: ${vtoStr}</td>
-          <td></td>
+          <td>${btnPagar}</td>
           <td class="r" style="font-size:12px;font-weight:500">${fN(c.importeEfectivo)}</td>
           <td></td>
         </tr>`;
@@ -859,9 +926,29 @@ function renderFinanciera() {
   }
   // Fila total CFO
   htmlCfo += `<tr style="border-top:2px solid #eee;background:#fafafa">
-    <td colspan="3" style="font-weight:700;font-size:11px;padding:7px 10px">TOTAL (${compromisos.length} compromiso${compromisos.length!==1?'s':''})</td>
+    <td colspan="3" style="font-weight:700;font-size:11px;padding:7px 10px">TOTAL (${activos.length} compromiso${activos.length!==1?'s':''})</td>
     <td class="r" style="font-weight:700;color:#c0392b;font-size:13px">${fN(totalEfec)}</td>
     <td></td></tr>`;
+
+  // Pagados: mostrar al final si hay y toggle está activo
+  if (pagados.length) {
+    const btnToggle = `<button onclick="toggleShowFinPagados()" style="font-size:9px;padding:2px 8px;border-radius:4px;border:1px solid #bbb;background:#f5f5f5;color:#888;cursor:pointer">${_showFinPagados?'▲ Ocultar':'▼ Ver'} ${pagados.length} pagado${pagados.length!==1?'s':''}</button>`;
+    htmlCfo += `<tr style="background:#f9f9f9"><td colspan="5" style="padding:6px 10px">${btnToggle}</td></tr>`;
+    if (_showFinPagados) {
+      for (const c of [...pagados].sort((a,b)=>a.fechaEntrega-b.fechaEntrega)) {
+        const vtoStr = c.fechaVto ? c.fechaVto.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+        const entStr = c.fechaEntrega ? c.fechaEntrega.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+        htmlCfo += `<tr style="background:#f9f9f9;opacity:.55">
+          <td style="padding-left:10px;font-size:11px;text-decoration:line-through;color:#888">${c.cliente}</td>
+          <td style="color:#aaa;font-size:10px">Entrega: ${entStr} · Vto: ${vtoStr}</td>
+          <td><button onclick="toggleFinPagado('${c.id}')" style="font-size:9px;padding:2px 7px;border-radius:4px;border:1px solid #bbb;background:#fff;color:#888;cursor:pointer">↺ Desmarcar</button></td>
+          <td class="r" style="font-size:11px;color:#aaa;text-decoration:line-through">${fN(c.importeEfectivo)}</td>
+          <td></td>
+        </tr>`;
+      }
+    }
+  }
+
   tbodyCfo.innerHTML = htmlCfo;
 
   // ── BLOQUE 2: Vista Tesorería — plan cheques financiera ──
@@ -923,8 +1010,8 @@ function buildCF(co, days){
   const cutoff=new Date(today);cutoff.setDate(cutoff.getDate()-30);
   const nbd=nextBizDay(today);
   const nbdKey=dKey(nbd);
-  // Saldo inicial: solo saldo bancos. La cartera entra como INGRESOS por fecha.
-  let saldo=(st[co].saldoBancos??0);
+  // Saldo inicial: solo saldo bancos operativos (TFC: Galicia+Macro+CMF; TF: total).
+  let saldo = co==='tfc' ? (tfcOpBancos().saldo??0) : (st[co].saldoBancos??0);
   const provItems=getProv(co);
   const provMan=getManuales(co,'prov');
   const cobMan=getManuales(co,'cob');
@@ -977,8 +1064,22 @@ function buildCF(co, days){
 // ─────────────────────────────────────────────────────
 function renderKPIs(co){
   const s=st[co];
-  const bancos=s.saldoBancos;
-  const desc=s.descubiertos;
+  // Para TFC: solo bancos operativos (Galicia, Macro, CMF)
+  let bancos, desc;
+  if(co==='tfc'){
+    const op=tfcOpBancos();
+    bancos=op.saldo; desc=op.desc;
+    // BAVSA + Total
+    const eBavsa=document.getElementById('kpi-tfc-bavsa');
+    const bv=op.bavsa;
+    if(eBavsa){
+      eBavsa.textContent=bv!=null?fN(bv.saldo):'—';
+      eBavsa.className='kpi-value'+(bv==null?'':bv.saldo>=0?' pos':' neg');
+      eBavsa.style.fontSize='14px';
+    }
+  } else {
+    bancos=s.saldoBancos; desc=s.descubiertos;
+  }
   const disp=(bancos!=null&&desc!=null)?bancos+desc:(bancos!=null?bancos:null);
 
   const eb=document.getElementById(`kpi-${co}-bancos`);
@@ -1019,6 +1120,17 @@ function renderKPIs(co){
   document.getElementById(`kpi-${co}-cartera`).textContent=totalCartera>0?fN(totalCartera):'—';
   const chqLabel=totalNChq?`${nActElec} elect.${nActFis?` + ${nActFis} fís.`:''}${totalExcl?` (${totalExcl} adj.)`:''}` : '—';
   document.getElementById(`kpi-${co}-nchq`).textContent=chqLabel;
+  // Total cartera + BAVSA como sub de BAVSA (solo TFC)
+  if(co==='tfc'){
+    const eTotal=document.getElementById('kpi-tfc-cartera-total');
+    if(eTotal){
+      const op=tfcOpBancos();
+      const bavsaSaldo=op.bavsa!=null?op.bavsa.saldo:0;
+      const tot=totalCartera+bavsaSaldo;
+      eTotal.textContent=fN(tot);
+      eTotal.className='kpi-value pos';
+    }
+  }
 
   // Chq emitidos total
   const totalEmitidos=s.chequesEmitidos.reduce((sum,c)=>sum+c.importe,0);
@@ -1060,7 +1172,7 @@ function renderTable(co,days){
       <td class="${r.egProv?'neg':'zero'}">${r.egProv?fN(-r.egProv):'—'}</td>
       <td class="${r.ing?'pos':'zero'}">${r.ing?fN(r.ing):'—'}</td>
       <td class="${r.saldoFin>=0?'pos':'neg'}">${fN(r.saldoFin)}</td>
-      <td style="font-weight:600;${(r.saldoFin+(st[co].descubiertos||0))>=0?'color:#1a7a40':'color:#c0392b'}">${fN(r.saldoFin+(st[co].descubiertos||0))}</td>
+      <td style="font-weight:600;${(r.saldoFin+(co==='tfc'?tfcOpBancos().desc:st[co].descubiertos||0))>=0?'color:#1a7a40':'color:#c0392b'}">${fN(r.saldoFin+(co==='tfc'?tfcOpBancos().desc:st[co].descubiertos||0))}</td>
     </tr>`;
   }
   if(!html)html=`<tr><td colspan="7" class="no-data">Sin datos suficientes para proyectar</td></tr>`;
@@ -1829,6 +1941,7 @@ function toggleFinGroup(k) {
 // ─────────────────────────────────────────────────────
 // Boot
 loadOverrides();
+loadFinPagados();
 document.getElementById('hdr-date').textContent=
   new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
 // asegurar que el detalle filtre por la empresa activa desde el inicio
