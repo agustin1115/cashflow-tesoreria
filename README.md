@@ -1,6 +1,12 @@
 # Cash Flow Proyectado · Tesorería
 
-App estática (un solo `index.html`) para el seguimiento de cash flow de TF Carnes y Trade Food. Se publica con GitHub Pages.
+App estática para el seguimiento de cash flow de TF Carnes y Trade Food. Se publica con GitHub Pages.
+
+## Estructura
+
+- `index.html` — markup
+- `css/style.css` — estilos
+- `js/app.js` — lógica de la app (parseo de Excel, cálculo del cash flow, sincronización con Supabase, render)
 
 ## Datos
 
