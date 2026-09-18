@@ -73,8 +73,16 @@ function markCloudSync(elId, ok) {
 }
 
 async function hydrateFromSupabase() {
-  const fmtNow = () => new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})
-    + ' ' + new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  // Formatea la fecha/hora REAL en que se subió el archivo (columna uploaded_at,
+  // completada sola por Supabase al insertar), no el momento en que se abre la página.
+  const fmtUploadedAt = (rows) => {
+    if (!rows.length) return '';
+    const latest = rows.reduce((max, r) => (!max || new Date(r.uploaded_at) > new Date(max)) ? r.uploaded_at : max, null);
+    if (!latest) return '';
+    const d = new Date(latest);
+    return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})
+      + ' ' + d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  };
   try {
     for (const co of ['tfc','tf']) {
       const { data: chq, error: eChq } = await sb.from('cheques_cartera').select('*').eq('company', co);
@@ -85,19 +93,19 @@ async function hydrateFromSupabase() {
         importe: r.importe, idCheque: r.id_cheque, razonSocial: r.razon_social, cuitLibrador: r.cuit_librador
       }));
       localStorage.setItem(`${co}_cheques_v2`, JSON.stringify(mappedChq));
-      if (mappedChq.length) localStorage.setItem(`${co}_cheques_date_v2`, fmtNow());
+      if (mappedChq.length) localStorage.setItem(`${co}_cheques_date_v2`, fmtUploadedAt(chq));
 
       const { data: prov, error: eProv } = await sb.from('cuentas_a_pagar').select('*').eq('company', co);
       if (eProv) throw eProv;
       const mappedProv = prov.map(r => ({ id: r.client_id, fecha: new Date(r.fecha).toISOString(), monto: r.monto, label: r.label }));
       localStorage.setItem(`${co}_prov_v1`, JSON.stringify(mappedProv));
-      if (mappedProv.length) localStorage.setItem(`${co}_prov_date_v1`, fmtNow());
+      if (mappedProv.length) localStorage.setItem(`${co}_prov_date_v1`, fmtUploadedAt(prov));
 
       const { data: mb, error: eMb } = await sb.from('modo_b_compromisos').select('*').eq('company', co);
       if (eMb) throw eMb;
       const mappedMb = mb.map(r => ({ id: r.client_id, fecha: new Date(r.fecha).toISOString(), monto: r.monto, label: r.label }));
       localStorage.setItem(`${co}_modob_prov_v1`, JSON.stringify(mappedMb));
-      if (mappedMb.length) localStorage.setItem(`${co}_modob_prov_date_v1`, fmtNow());
+      if (mappedMb.length) localStorage.setItem(`${co}_modob_prov_date_v1`, fmtUploadedAt(mb));
     }
     const { data: comp, error: eComp } = await sb.from('compromisos_efectivo').select('*');
     if (eComp) throw eComp;
@@ -107,7 +115,7 @@ async function hydrateFromSupabase() {
       importeEfectivo: r.importe_efectivo
     }));
     localStorage.setItem('tfc_compromisos_v1', JSON.stringify(mappedComp));
-    if (mappedComp.length) localStorage.setItem('tfc_compromisos_date_v1', fmtNow());
+    if (mappedComp.length) localStorage.setItem('tfc_compromisos_date_v1', fmtUploadedAt(comp));
   } catch(e) {
     console.warn('[Supabase] No se pudo sincronizar datos remotos, se usa el caché local:', e.message);
   }
