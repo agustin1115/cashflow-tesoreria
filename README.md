@@ -24,3 +24,7 @@ La app usa la `anon` key (visible en el propio HTML, es pública por diseño) y 
 ## Deploy
 
 GitHub Pages sirve directamente `index.html` desde la rama `main`.
+
+`css/style.css` y `js/app.js` se referencian con un query string de versión
+(`?v=AAAAMMDDx`) para evitar que el navegador quede con una copia vieja en caché.
+Al hacer un cambio en CSS o JS, subir también ese número en `index.html`.
