@@ -859,9 +859,15 @@ function renderFinanciera() {
   const pagados  = compromisos.filter(c =>  _finPagados.has(c.id));
 
   const totalEfec  = activos.reduce((s,c) => s + c.importeEfectivo, 0);
+  // Costo financiero simple: 3% del efectivo a entregar (no el cálculo con tope de
+  // $70M/día que usa calcPlanFinanciera() para el Excel — acá es directo sobre el total).
+  const totalCosto = totalEfec * FIN_RATE;
+  const totalConCosto = totalEfec + totalCosto;
 
   document.getElementById('finkpi-n').textContent     = activos.length || '—';
   document.getElementById('finkpi-efec').textContent  = totalEfec > 0  ? fN(totalEfec)  : '—';
+  document.getElementById('finkpi-costo').textContent = totalCosto > 0 ? fN(totalCosto) : '—';
+  document.getElementById('finkpi-total-costo').textContent = totalConCosto > 0 ? fN(totalConCosto) : '—';
 
   const emptyMsg5 = '<tr><td colspan="5" class="fin-empty">Subí el Excel de compromisos (Cliente | Fecha vto. cheque | Importe)</td></tr>';
 
@@ -975,6 +981,12 @@ function buildCF(co, days){
   for(const c of (st[co].chequesFisicos||[])){
     const id=chqStableId(co,'f',c.numero,c.importe||0);
     if(!excl[co].chq.has(id))cartIngHoy+=(c.importe||0);
+  }
+  // TFC: el ingreso de HOY es "Fondos disponibles" (Cartera + BAVSA), no solo la cartera —
+  // mismo número que la tarjeta KPI "Fondos disponibles".
+  if(co==='tfc'){
+    const bv=tfcOpBancos().bavsa;
+    if(bv)cartIngHoy+=(bv.saldo||0);
   }
 
   const rows=[];
