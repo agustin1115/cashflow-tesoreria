@@ -851,34 +851,26 @@ function calcPlanFinanciera(compromisos) {
 function renderFinanciera() {
   const compromisos = st.tfc.compromisos || [];
   const tbodyCfo = document.getElementById('fin-tbody-cfo');
-  const tbodyTes = document.getElementById('fin-tbody-tfc');
-  if (!tbodyCfo || !tbodyTes) return;
+  if (!tbodyCfo) return;
   const today = new Date(); today.setHours(0,0,0,0);
 
   // Separar activos y pagados
   const activos  = compromisos.filter(c => !_finPagados.has(c.id));
   const pagados  = compromisos.filter(c =>  _finPagados.has(c.id));
 
-  const plan = calcPlanFinanciera(activos);
   const totalEfec  = activos.reduce((s,c) => s + c.importeEfectivo, 0);
-  const totalBruto = plan.reduce((s,p) => s + p.bruto, 0);
-  const totalCosto = plan.reduce((s,p) => s + p.costo, 0);
 
   document.getElementById('finkpi-n').textContent     = activos.length || '—';
   document.getElementById('finkpi-efec').textContent  = totalEfec > 0  ? fN(totalEfec)  : '—';
-  document.getElementById('finkpi-bruto').textContent = totalBruto > 0 ? fN(totalBruto) : '—';
-  document.getElementById('finkpi-costo').textContent = totalCosto > 0 ? fN(totalCosto) : '—';
 
   const emptyMsg5 = '<tr><td colspan="5" class="fin-empty">Subí el Excel de compromisos (Cliente | Fecha vto. cheque | Importe)</td></tr>';
-  const emptyMsg7 = '<tr><td colspan="7" class="fin-empty">Sin datos</td></tr>';
 
   if (!compromisos.length) {
     tbodyCfo.innerHTML = emptyMsg5;
-    tbodyTes.innerHTML = emptyMsg7;
     return;
   }
 
-  // ── BLOQUE 1: Vista CFO — agrupado por fecha de entrega ──────
+  // ── Vista CFO — agrupado por fecha de entrega ──────
   const compOrdenados = [...activos].sort((a,b) => a.fechaEntrega - b.fechaEntrega);
 
   // Agrupar por fecha de entrega
@@ -958,56 +950,6 @@ function renderFinanciera() {
   }
 
   tbodyCfo.innerHTML = htmlCfo;
-
-  // ── BLOQUE 2: Vista Tesorería — plan cheques financiera ──
-  const byComp = {};
-  for (const p of plan) { (byComp[p.compromisoId] = byComp[p.compromisoId]||[]).push(p); }
-
-  let htmlTes = '';
-  for (const c of compOrdenados) {
-    const items = (byComp[c.id] || []).sort((a,b) => a.fechaCheque - b.fechaCheque);
-    const dias = Math.round((c.fechaEntrega - today) / (1000*86400));
-    const estadoBadge = dias < 0
-      ? `<span class="d-days overdue">Vencido ${Math.abs(dias)}d</span>`
-      : dias === 0 ? `<span class="d-days soon">HOY</span>`
-      : dias <= 5  ? `<span class="d-days soon">en ${dias}d</span>`
-      :               `<span class="d-days ok">en ${dias}d</span>`;
-    const capBadge = items.length > 1 ? `<span class="fin-badge-cap">${items.length} cheques (cap $70M)</span>` : '';
-    const entStr = c.fechaEntrega.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
-    // Fila de grupo por cliente
-    htmlTes += `<tr class="fin-group-hdr">
-      <td colspan="2" style="font-weight:700">📋 ${c.cliente}</td>
-      <td style="font-weight:400;font-size:10px">Entrega efectivo: <strong>${entStr}</strong></td>
-      <td class="r" colspan="2" style="font-weight:700">Efectivo a entregar: ${fN(c.importeEfectivo)}</td>
-      <td class="r"></td>
-      <td>${estadoBadge}${capBadge}</td>
-    </tr>`;
-    // Filas de cada cheque a emitir
-    items.forEach((p, i) => {
-      const dc = Math.round((p.fechaCheque - today) / (1000*86400));
-      const dcLabel = dc < 0 ? `<span style="color:#c0392b;font-size:9px"> vencido</span>`
-        : dc === 0 ? `<span style="color:#8a6800;font-size:9px"> hoy</span>`
-        : `<span style="color:#aaa;font-size:9px"> en ${dc}d</span>`;
-      htmlTes += `<tr>
-        <td style="color:#aaa;font-size:10px;padding-left:22px">Cheque ${i+1}/${items.length}</td>
-        <td style="color:#888;font-size:11px">${c.cliente}</td>
-        <td>${p.fechaCheque.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})}${dcLabel}</td>
-        <td class="r" style="font-weight:600">${fN(p.bruto)}</td>
-        <td class="r" style="color:#1a7a40">${fN(p.neto)}</td>
-        <td class="r" style="color:#c0392b">-${fN(p.costo)}</td>
-        <td></td>
-      </tr>`;
-    });
-  }
-  // Total tesorería
-  htmlTes += `<tr style="border-top:2px solid #eee;background:#fafafa">
-    <td colspan="3" style="font-weight:700;font-size:11px;padding:7px 10px">TOTAL — ${plan.length} cheque${plan.length!==1?'s':''} a emitir</td>
-    <td class="r" style="font-weight:700;color:#c0392b">${fN(totalBruto)}</td>
-    <td class="r" style="font-weight:700;color:#1a7a40">${fN(totalEfec)}</td>
-    <td class="r" style="font-weight:700;color:#c0392b">-${fN(totalCosto)}</td>
-    <td></td>
-  </tr>`;
-  tbodyTes.innerHTML = htmlTes;
 }
 
 // ─────────────────────────────────────────────────────

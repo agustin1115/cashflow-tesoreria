@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260923a">
+<link rel="stylesheet" href="css/style.css?v=20260923b">
 <style>
 /* ── Resumen de Posición ─────────────────────────── */
 .resumen-section {
@@ -269,7 +269,7 @@
     <tbody id="tbody-tfc"><tr><td colspan="7" class="no-data">Cargando datos...</td></tr></tbody>
   </table></div>
 
-  <!-- COMPROMISOS EFECTIVO / PLAN FINANCIERA — solo TF Carnes -->
+  <!-- COMPROMISOS EFECTIVO / FINANCIERA — solo TF Carnes -->
   <div class="fin-section" id="fin-section-tfc">
 
     <!-- Header global con upload -->
@@ -288,11 +288,9 @@
     <div class="fin-kpi-row">
       <div class="fin-kpi"><div class="fin-kpi-label">Compromisos</div><div class="fin-kpi-value" id="finkpi-n">—</div></div>
       <div class="fin-kpi"><div class="fin-kpi-label">Efectivo a entregar</div><div class="fin-kpi-value neg" id="finkpi-efec">—</div></div>
-      <div class="fin-kpi"><div class="fin-kpi-label">Cheques a emitir (bruto)</div><div class="fin-kpi-value neg" id="finkpi-bruto">—</div></div>
-      <div class="fin-kpi" style="background:#fff8f8"><div class="fin-kpi-label" style="color:#c0392b">Costo financiero (3%)</div><div class="fin-kpi-value" style="color:#c0392b" id="finkpi-costo">—</div></div>
     </div>
 
-    <!-- BLOQUE 1: Vista CFO — compromisos simples -->
+    <!-- Vista CFO — compromisos simples -->
     <div style="border-top:2px solid var(--tfc-mid)">
       <div style="padding:8px 14px;background:#f8faf6;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--tfc-mid)">
         <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tfc-primary)">📊 Compromisos de Entrega</span>
@@ -308,23 +306,6 @@
             <th>Estado</th>
           </tr></thead>
           <tbody id="fin-tbody-cfo"><tr><td colspan="5" class="fin-empty">Sin datos</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- BLOQUE 2: Vista Tesorería — plan de cheques a financiera -->
-    <div style="border-top:2px solid var(--tfc-mid)">
-      <div style="padding:8px 14px;background:#f8faf6;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--tfc-mid)">
-        <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tfc-primary)">🏦 Plan de Cheques a Financiera</span>
-        <span style="font-size:10px;color:#aaa">· Desglose de cheques a emitir para hacerse del efectivo</span>
-      </div>
-      <div class="fin-table-wrap">
-        <table class="fin-table">
-          <thead><tr>
-            <th>Cheque</th><th>Cliente</th><th>Fecha emisión</th>
-            <th class="r">Bruto a emitir</th><th class="r">Neto recibido</th><th class="r">Costo (3%)</th><th>Estado entrega</th>
-          </tr></thead>
-          <tbody id="fin-tbody-tfc"><tr><td colspan="7" class="fin-empty">Sin datos</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -512,7 +493,7 @@
   <div class="ov-body" id="ov-body"></div>
 </div>
 
-<script src="js/app.js?v=20260923a"></script>
-<script src="js/app-patches.js?v=20260923a"></script>
+<script src="js/app.js?v=20260923b"></script>
+<script src="js/app-patches.js?v=20260923b"></script>
 </body>
 </html>

@@ -17,6 +17,10 @@ App estática para el seguimiento de cash flow de TF Carnes y Trade Food. Se pub
 
 - Los balances de tesorería y cheques físicos se leen en vivo desde Google Sheets (deben estar compartidos como "cualquiera con el enlace puede ver").
 - Las subidas manuales de Excel (Cuentas a pagar, Cheques cartera/banco, Modo B, Compromisos de efectivo) se guardan en un proyecto de Supabase propio, para que persistan entre navegadores y no solo en `localStorage`.
+- La sección "Compromisos de Efectivo · Financiera" (solo TF Carnes) solo muestra la vista CFO
+  (fecha de entrega y monto por cliente). El desglose de cheques a emitir a la financiera (bruto/neto/
+  costo 3%, `calcPlanFinanciera()`) ya no se muestra en pantalla, pero la función se mantiene y se sigue
+  usando en la hoja "Compromisos Efectivo" del Excel exportado (⬇ Excel).
 
 ## Supabase
 
