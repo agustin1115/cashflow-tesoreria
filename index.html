@@ -9,7 +9,96 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260918a">
+<link rel="stylesheet" href="css/style.css?v=20260923a">
+<style>
+/* ── Resumen de Posición ─────────────────────────── */
+.resumen-section {
+  margin: 16px 10px 20px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  overflow: hidden;
+}
+.resumen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #1a2332 0%, #253040 100%);
+  color: #fff;
+}
+.resumen-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: #fff;
+}
+.btn-resumen-refresh {
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.25);
+  color: #fff;
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-resumen-refresh:hover { background: rgba(255,255,255,.22); }
+.resumen-body { overflow-x: auto; }
+.resumen-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: inherit;
+}
+.resumen-table th, .resumen-table td {
+  padding: 7px 14px;
+  text-align: right;
+  border-bottom: 1px solid #f0f2f5;
+}
+.rs-th-label, .rs-label { text-align: left !important; }
+.rs-th-label { width: 180px; }
+.rs-th-co {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px 14px;
+  background: #f5f7fa;
+}
+.tfc-col { color: #506E3E; border-left: 3px solid #506E3E; }
+.tf-col  { color: #7B1C2B; border-left: 3px solid #7B1C2B; }
+.rs-label {
+  color: #555;
+  font-weight: 500;
+  padding-left: 24px;
+}
+.rs-val { font-variant-numeric: tabular-nums; }
+.rs-pos { color: #1a7a3c; font-weight: 600; }
+.rs-neg { color: #c0392b; font-weight: 600; }
+.rs-sec-header td {
+  background: #1a2332 !important;
+  color: #fff !important;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 6px 14px !important;
+  border-bottom: none !important;
+}
+.rs-sec-title { text-align: left !important; }
+.rs-total-row td {
+  background: #f0f4f0;
+  border-top: 2px solid #d0dbd0;
+  border-bottom: 2px solid #d0dbd0;
+}
+.rs-total {
+  font-size: 13px;
+  font-weight: 700 !important;
+}
+.resumen-table tfoot td {
+  border-bottom: none;
+  background: #fafafa;
+}
+</style>
 </head>
 <body>
 <div class="page">
@@ -251,19 +340,27 @@
         <input type="file" id="fi-mb-tfc" accept=".xls,.xlsx" style="display:none" onchange="onModoBUpload(event,'tfc')">
         📄 Subir compromisos
       </label>
+      <div style="display:flex;align-items:center;gap:5px;margin-left:8px;background:rgba(255,255,255,.08);border-radius:6px;padding:4px 8px">
+        <span style="font-size:10px;color:#aaa;white-space:nowrap">USD $1 =</span>
+        <input type="number" id="mb-cotiz-tfc" placeholder="cotiz." min="0" step="1"
+          style="width:80px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#fff;font-size:11px;padding:2px 6px;font-family:inherit"
+          oninput="setModoBCotizacion('tfc',this.value)">
+        <span style="font-size:10px;color:#aaa">ARS</span>
+      </div>
     </div>
   </div>
   <div class="mb-kpi-row">
     <div class="mb-kpi"><div class="mb-kpi-label">Pesos en caja</div><div class="mb-kpi-value pos" id="mb-kpi-tfc-pesos">—</div></div>
     <div class="mb-kpi"><div class="mb-kpi-label">Dólares en caja</div><div class="mb-kpi-value pos" id="mb-kpi-tfc-dolares">—</div></div>
     <div class="mb-kpi"><div class="mb-kpi-label">Cheques Modo B</div><div class="mb-kpi-value pos" id="mb-kpi-tfc-cheques">—</div></div>
-    <div class="mb-kpi"><div class="mb-kpi-label">Total disponible ($ + chq)</div><div class="mb-kpi-value pos" id="mb-kpi-tfc-total">—</div></div>
+    <div class="mb-kpi"><div class="mb-kpi-label">Total equiv. pesos</div><div class="mb-kpi-value pos" id="mb-kpi-tfc-total">—</div><div class="mb-kpi-sub" id="mb-kpi-tfc-total-sub" style="font-size:9px;color:#aaa;margin-top:2px"></div></div>
   </div>
   <div class="mb-kpi-row" style="border-top:1px solid #253040">
     <div class="mb-kpi"><div class="mb-kpi-label">⚠ Vencido</div><div class="mb-kpi-value" id="mb-kpi-tfc-vencido">—</div></div>
     <div class="mb-kpi"><div class="mb-kpi-label">Próx. 7 días</div><div class="mb-kpi-value" id="mb-kpi-tfc-d7">—</div></div>
     <div class="mb-kpi"><div class="mb-kpi-label">Próx. 15 días</div><div class="mb-kpi-value" id="mb-kpi-tfc-d15">—</div></div>
     <div class="mb-kpi"><div class="mb-kpi-label">Más de 15 días</div><div class="mb-kpi-value" id="mb-kpi-tfc-d15plus">—</div></div>
+    <div class="mb-kpi" style="background:rgba(255,255,255,.07)"><div class="mb-kpi-label" style="font-weight:700">Total compromisos</div><div class="mb-kpi-value neg" id="mb-kpi-tfc-total-venc">—</div></div>
   </div>
   <div class="mb-sub-header">
     <span class="mb-sub-title">📋 Compromisos de Pago</span>
@@ -314,19 +411,27 @@
           <input type="file" id="fi-mb-tf" accept=".xls,.xlsx" style="display:none" onchange="onModoBUpload(event,'tf')">
           📄 Subir compromisos
         </label>
+        <div style="display:flex;align-items:center;gap:5px;margin-left:8px;background:rgba(255,255,255,.08);border-radius:6px;padding:4px 8px">
+          <span style="font-size:10px;color:#aaa;white-space:nowrap">USD $1 =</span>
+          <input type="number" id="mb-cotiz-tf" placeholder="cotiz." min="0" step="1"
+            style="width:80px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#fff;font-size:11px;padding:2px 6px;font-family:inherit"
+            oninput="setModoBCotizacion('tf',this.value)">
+          <span style="font-size:10px;color:#aaa">ARS</span>
+        </div>
       </div>
     </div>
     <div class="mb-kpi-row">
       <div class="mb-kpi"><div class="mb-kpi-label">Pesos en caja</div><div class="mb-kpi-value pos" id="mb-kpi-tf-pesos">—</div></div>
       <div class="mb-kpi"><div class="mb-kpi-label">Dólares en caja</div><div class="mb-kpi-value pos" id="mb-kpi-tf-dolares">—</div></div>
       <div class="mb-kpi"><div class="mb-kpi-label">Cheques Modo B</div><div class="mb-kpi-value pos" id="mb-kpi-tf-cheques">—</div></div>
-      <div class="mb-kpi"><div class="mb-kpi-label">Total disponible ($ + chq)</div><div class="mb-kpi-value pos" id="mb-kpi-tf-total">—</div></div>
+      <div class="mb-kpi"><div class="mb-kpi-label">Total equiv. pesos</div><div class="mb-kpi-value pos" id="mb-kpi-tf-total">—</div><div class="mb-kpi-sub" id="mb-kpi-tf-total-sub" style="font-size:9px;color:#aaa;margin-top:2px"></div></div>
     </div>
     <div class="mb-kpi-row" style="border-top:1px solid #253040">
       <div class="mb-kpi"><div class="mb-kpi-label">⚠ Vencido</div><div class="mb-kpi-value" id="mb-kpi-tf-vencido">—</div></div>
       <div class="mb-kpi"><div class="mb-kpi-label">Próx. 7 días</div><div class="mb-kpi-value" id="mb-kpi-tf-d7">—</div></div>
       <div class="mb-kpi"><div class="mb-kpi-label">Próx. 15 días</div><div class="mb-kpi-value" id="mb-kpi-tf-d15">—</div></div>
       <div class="mb-kpi"><div class="mb-kpi-label">Más de 15 días</div><div class="mb-kpi-value" id="mb-kpi-tf-d15plus">—</div></div>
+      <div class="mb-kpi" style="background:rgba(255,255,255,.07)"><div class="mb-kpi-label" style="font-weight:700">Total compromisos</div><div class="mb-kpi-value neg" id="mb-kpi-tf-total-venc">—</div></div>
     </div>
     <div class="mb-sub-header">
       <span class="mb-sub-title">📋 Compromisos de Pago</span>
@@ -377,6 +482,24 @@
   </div>
 </div>
 
+<!-- ─── RESUMEN DE POSICIÓN ──────────────────────────── -->
+<div class="resumen-section" id="resumen-section">
+  <div class="resumen-header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="resumen-title">📊 Resumen de Posición</span>
+      <span style="font-size:11px;color:rgba(255,255,255,.5)">TF Carnes · Trade Food</span>
+    </div>
+    <button onclick="renderResumen()" class="btn-resumen-refresh">↺ Actualizar</button>
+  </div>
+  <div class="resumen-body">
+    <table class="resumen-table" id="resumen-table">
+      <tbody>
+        <tr><td colspan="3" style="padding:18px;text-align:center;color:#888;font-size:12px">Cargando resumen…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 </div><!-- /page -->
 
 <!-- PANEL OVERLAY -->
@@ -389,6 +512,7 @@
   <div class="ov-body" id="ov-body"></div>
 </div>
 
-<script src="js/app.js?v=20260918a"></script>
+<script src="js/app.js?v=20260923a"></script>
+<script src="js/app-patches.js?v=20260923a"></script>
 </body>
 </html>

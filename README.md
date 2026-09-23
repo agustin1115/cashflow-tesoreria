@@ -7,6 +7,11 @@ App estática para el seguimiento de cash flow de TF Carnes y Trade Food. Se pub
 - `index.html` — markup
 - `css/style.css` — estilos
 - `js/app.js` — lógica de la app (parseo de Excel, cálculo del cash flow, sincronización con Supabase, render)
+- `js/app-patches.js` — funcionalidades agregadas después, por monkey-patch sobre `app.js` (se carga
+  después y reasigna `renderModoB`/`renderAll` para no tener que tocar `app.js` en cada punto donde
+  ya se llaman): cotización USD→ARS de Modo B (`setModoBCotizacion`, tarjeta "Total equiv. pesos" y
+  "Total compromisos") y la sección "Resumen de Posición" (`renderResumen`, TF Carnes vs. Trade Food
+  lado a lado, usando los mismos datos que ya calculan las tarjetas KPI de cada empresa).
 
 ## Datos
 
